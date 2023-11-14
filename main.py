@@ -29,6 +29,7 @@ class NDFuzzMonitor:
         self.result_turn = 0
         self.pre_result_idx = None
         self.res_pre = None
+        self.coverage = None
 
         self.start_image_flag = False
         self.end_image_flag = False
@@ -48,15 +49,15 @@ class NDFuzzMonitor:
             return
 
         config = self.config[vendor][protocol]
-        # out_path = "{}/out_{}_{}_BY_BLM".format(config["fuzzer"], vendor, protocol)
-        out_path = "{}/out_srx_zsnmp_fb_1116/".format(config["fuzzer"])
+        out_path = "{}/out_{}_{}_BY_BLM".format(config["fuzzer"], vendor, protocol)
+        # out_path = "{}/out_srx_zsnmp_fb_1116/".format(config["fuzzer"])
         self.logger.info("[!] Output file path : {}".format(out_path))
 
         # 本地结果
         self.res_pre = "log/{}_{}_pre.txt".format(vendor, protocol)
         with open(self.res_pre, "a+") as res_pre:
             res_pre.truncate(0)
-        os.system("rm result/")
+        os.system("rm -f result/*")
 
         self.logger.debug('[+] Getting Running Port')
         port = None
@@ -70,33 +71,34 @@ class NDFuzzMonitor:
         self.logger.info("[!] Image running at Port {}".format(port))
 
         self.logger.debug('[+] Starting Fuzzer Image')
-        # t_image = threading.Thread(target=self.start_image, args=(config["image_start"],))
-        # self.start_image_flag = False
-        # self.end_image_flag = False
-        # t_image.start()
+        t_image = threading.Thread(target=self.start_image, args=(config["image_start"],))
+        self.start_image_flag = False
+        self.end_image_flag = False
+        t_image.start()
 
         self.logger.debug('[+] Running firmware Image')
-        # t_firmware = threading.Thread(target=self.start_firmware, args=(config["firmware"], port))
-        # t_firmware.start()
+        t_firmware = threading.Thread(target=self.start_firmware, args=(config["firmware"], port))
+        t_firmware.start()
 
         self.logger.debug("[+] Running NDFuzz")
-        # t_fuzz = threading.Thread(target=self.start_fuzzer, args=(config["fuzzer"], port, config["config"], config["input"], out_path))
-        # t_fuzz.start()
+        t_fuzz = threading.Thread(target=self.start_fuzzer, args=(config["fuzzer"], port, config["config"], config["input"], out_path))
+        t_fuzz.start()
 
-        # while True:
-        #     if self.start_fuzzer_flag:
-        #         break
+        while True:
+            if self.start_fuzzer_flag:
+                break
 
         # 执行固定时间
-        # exec_time = 0
-        # while exec_time < self.time_limit:
-        #     time.sleep(1)
-        #     exec_time += 1
-        #
-        #     if exec_time % 60 == 0:
-        #         t_scan = threading.Thread(target=self.scan_result, args=(port, out_path))
-        #         t_scan.start()
+        exec_time = 0
+        while exec_time < self.time_limit:
+            time.sleep(1)
+            exec_time += 1
 
+            if exec_time % 60 == 0:
+                t_scan = threading.Thread(target=self.scan_result, args=(port, out_path))
+                t_scan.start()
+
+        # 最后检查一次结果
         t_scan = threading.Thread(target=self.scan_result, args=(port, out_path))
         t_scan.start()
 
@@ -141,11 +143,11 @@ class NDFuzzMonitor:
 
     def start_firmware(self, path, port):
         # 等待镜像启动完成
-        # while True:
-        #     if self.start_image_flag:
-        #         self.logger.debug("[+] Waiting Image Start for 20s...")
-        #         time.sleep(20)
-        #         break
+        while True:
+            if self.start_image_flag:
+                self.logger.debug("[+] Waiting Image Start for 20s...")
+                time.sleep(20)
+                break
 
         self.firmware_link = self.start_link(port)
 
@@ -153,19 +155,16 @@ class NDFuzzMonitor:
         ssh = paramiko.SSHClient()
         ssh._transport = self.firmware_link
 
-        # stdin, stdout, stderr = ssh.exec_command("cd {} && ls".format(path))
+        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ls".format(path), get_pty=True)
+        time.sleep(1)
+        stdin.write("mima1234\n")
         # print(stdout.read().decode())
 
         self.logger.info("[!] Run Firmware...")
         self.start_firmware_flag = True
-        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh && sudo ./start_qemu.sh".format(path),
+        ssh.exec_command("cd {} && sudo ./network_setup.sh && sudo ./start_qemu.sh".format(path))
+        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./start_qemu.sh".format(path),
         #                                          get_pty=True)
-        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./start_qemu.sh".format(path),
-                                                 get_pty=True)
-        time.sleep(1)
-        stdin.write("mima1234\n")
-        print(stdout.read().decode())
-        print(stderr.read().decode())
 
     def start_fuzzer(self, path, port, config, seed, out):
         # 等待固件线程启动
@@ -181,18 +180,26 @@ class NDFuzzMonitor:
         ssh = paramiko.SSHClient()
         ssh._transport = self.fuzzer_link
 
-        self.logger.info("[!] Run Fuzzer...")
-        self.start_fuzzer_flag = True
-        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out),
-                                                 get_pty=True)
+        stdin, stdout, stderr = ssh.exec_command("sudo cat {}/Configs/{}.config".format(path, config), get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
-        print(stdout.read().decode())
-        print(stderr.read().decode())
+
+        lines = stdout.read().decode().split('\n')
+        for line in lines:
+            if "coverage_file =" in line:
+                self.coverage = line.split("=")[1].strip()
+        self.logger.info("[!] Coverage File : {}".format(self.coverage))
+
+        self.logger.info("[!] Run Fuzzer...")
+        self.start_fuzzer_flag = True
+        ssh.exec_command("cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out))
 
     def scan_result(self, port, out):
         self.logger.debug("[+] Result Scan {}".format(self.result_turn))
         self.result_turn += 1
+
+        # # Test
+        # self.coverage = "/home/zoe/Desktop/bb_coverage/vsrx_19.4/snmp_0319/vsrx_coverage"
 
         scan_link = self.start_link(port)
         ssh = paramiko.SSHClient()
@@ -210,9 +217,11 @@ class NDFuzzMonitor:
 
         new_list = []
         for file in res_list:
+            if file == '':
+                continue
             if file not in pre:
                 new_list.append(file)
-        self.logger.debug("[+] New Result : {}".format(new_list))
+        self.logger.debug("[!] New Result : {}".format(new_list))
 
         sftp = paramiko.SFTPClient.from_transport(scan_link)
 
@@ -221,7 +230,9 @@ class NDFuzzMonitor:
                 sftp.get("{}/crashes/{}".format(out, name), "result/{}".format(name))
                 pre_res.write(name + "\n")
 
-        stdin, stdout, stderr = ssh.exec_command("tail {}/")
+        stdin, stdout, stderr = ssh.exec_command("tail -n 2 {} | head -n 1".format(self.coverage))
+        coverage = stdout.read().decode().strip()
+        self.logger.info("[!] Coverage : {}".format(coverage))
 
 
 if __name__ == '__main__':
