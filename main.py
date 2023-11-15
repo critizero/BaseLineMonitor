@@ -33,13 +33,13 @@ class NDFuzzMonitor:
 
         if message:
             self.vendor = message["paras"]["vendor"]
-            self.protcol = message["paras"]["protocol"]
+            self.protocol = message["paras"]["protocol"]
             self.time_limit = message["paras"]["time_limit"]
             self.time_gap = message["paras"]["time_gap"]
         else:
             # for local test
             self.vendor = "srx"
-            self.protcol = "snmp"
+            self.protocol = "snmp"
             self.time_limit = 300
             self.time_gap = 0
 
