@@ -18,12 +18,168 @@ def create_dir(dir):
         os.makedirs(dir)
 
 
+neko = threading.Lock()
+
+
 class NDFuzzMonitor:
-    def __init__(self, message = None, run_local = False):
+    def __init__(self, message=None, debug=False):
+        self.message = message
+        self.protocols = message["params"]["protocol"]
+        self.local_ip = '10.26.81.7'
+        self.thread_info = {}
+
         with open('config.json', 'r') as conf_f:
             self.config = json.load(conf_f)
 
+        self.is_debug = debug
+
+    def start(self):
+        os.system("rm -f result/*")
+        for protocol in self.protocols:
+            tmp_link = {
+                "vendor": self.message["params"]["vendor"],
+                "protocol": protocol,
+                "time_limit": self.message["params"]["time_limit"],
+                "time_gap": self.message["params"]["time_gap"]
+            }
+            t_runner = threading.Thread(target=self.run, args=(tmp_link,))
+            t_runner.start()
+
+        sec = 0
+        while True:
+            time.sleep(1)
+            sec += 1
+
+            if sec % self.message["params"]["time_gap"] == 0:
+                t_scan = threading.Thread(target=self.run_scan())
+                t_scan.start()
+
+    def run(self, msg):
+        config = self.config[msg["vendor"]][msg["protocol"]]
+        out_path = "{}/out_{}_{}_BY_BLM".format(config["fuzzer"], msg["vendor"], msg["protocol"])
+
+        res_pre = "log/{}_{}_pre.txt".format(msg["vendor"], msg["protocol"])
+        with open(res_pre, "a+") as res_pre_f:
+            res_pre_f.truncate(0)
+
+        port = None
+        with open(config["image_start"], "r") as start_f:
+            for line in start_f.readlines():
+                if self.local_ip in line:
+                    port = int(re.findall(r'{}:(\d+)'.format(self.local_ip), line)[0])
+                    break
+
+        info = {
+            "path": out_path,
+            "port": port,
+            "file": res_pre
+        }
+
+        neko.acquire()
+        self.thread_info[msg["protocol"]] = info
+        neko.release()
+
+        runner = NDFuzzController(message=msg, config=self.config)
+        runner.start()
+
+    def get_link(self, port):
+        retry_count = 5
+        transport = None
+        while True:
+            try:
+                transport = paramiko.Transport((self.local_ip, port))
+                transport.connect(username="nfvfuzzer", password="mima1234")
+            except Exception:
+                if not retry_count:
+                    return None
+                time.sleep(10)
+                retry_count -= 1
+                continue
+            break
+        return transport
+
+    def run_scan(self):
+        print("=======SCANNING RESULT======")
+        for protocol in self.protocols:
+            t_scanner = threading.Thread(target=self.get_result, args=(self.thread_info[protocol], protocol))
+            t_scanner.start()
+
+    def get_result(self, info, protocol):
+
+        scan_link = self.get_link(info["port"])
+        ssh = paramiko.SSHClient()
+        ssh._transport = scan_link
+
+        stdin, stdout, stderr = ssh.exec_command("ls {}/crashes".format(info["path"]))
+        res = stdout.read().decode().strip()
+
+        pre = []
+        res_list = res.split('\n')
+        with open(info["file"], "r") as pre_res:
+            for line in pre_res.readlines():
+                pre.append(line.strip())
+
+        new_list = []
+        for file in res_list:
+            if file == '':
+                continue
+            if file not in pre:
+                new_list.append(file)
+
+        sftp = paramiko.SFTPClient.from_transport(scan_link)
+
+        with open(info["file"], "a") as pre_res:
+            for name in new_list:
+                sftp.get("{}/crashes/{}".format(info["path"], name), "result/{}_{}".format(protocol, name))
+                pre_res.write(name + "\n")
+
+        # stdin, stdout, stderr = ssh.exec_command("tail -n 2 {} | head -n 1".format(self.coverage))
+        # coverage = stdout.read().decode().strip()
+
+        if not self.is_debug:
+            producer_message = self.generate_producer_message(new_list)
+
+            producer = TaskQueue()
+            producer.send_task_result(producer_message)
+
+    def generate_producer_message(self, new_list):
+        successed, error, data = self.get_result_data(new_list)
+
+        message = self.message
+
+        message["msg_id"] = str(uuid.uuid4())
+        message["msg_type"] = 2
+        message["destination"] = message["source"]
+        message["successed"] = successed
+        message["error"] = error
+        message["data_uri"] = "null"
+        message["data"] = data
+        message["timestamp"] = int(time.time())
+        message["signature"] = "null"
+
+        return message
+
+    def get_result_data(self, new_list):
+        result_list = []
+        for case_name in new_list:
+            with open("result/" + case_name, "r") as case_f:
+                content = case_f.readlines()
+                result_list.append(' '.join(content).strip())
+        successed = True
+        error = "null"
+        data = "\n".join(result_list)
+        return successed, error, data
+
+
+class NDFuzzController:
+    def __init__(self, message=None, run_local=False, config=None):
         self.local_ip = '10.26.81.7'
+
+        if not config:
+            with open('config.json', 'r') as conf_f:
+                self.config = json.load(conf_f)
+        else:
+            self.config = config
 
         self.logger = logging.getLogger('BaseLineMonitor')
         formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
@@ -36,13 +192,11 @@ class NDFuzzMonitor:
         self.run_in_local = run_local
         self.debug_message = True
 
-        self.result_turn = 0
-
         if message and not self.debug_message:
-            self.vendor = message["params"]["vendor"]
-            self.protocol = message["params"]["protocol"]
-            self.time_limit = message["params"]["time_limit"]
-            self.time_gap = message["params"]["time_gap"]
+            self.vendor = message["vendor"]
+            self.protocol = message["protocol"]
+            self.time_limit = message["time_limit"]
+            self.time_gap = message["time_gap"]
         else:
             # for local test
             self.vendor = "srx"
@@ -73,7 +227,6 @@ class NDFuzzMonitor:
         exit(0)
 
     def start(self):
-
         if self.vendor not in self.config or self.protocol not in self.config[self.vendor]:
             self.error("No corresponding image file")
             return
@@ -115,7 +268,8 @@ class NDFuzzMonitor:
         t_firmware.start()
 
         self.logger.debug("[+] Running NDFuzz")
-        t_fuzz = threading.Thread(target=self.start_fuzzer, args=(config["fuzzer"], port, config["config"], config["input"], out_path))
+        t_fuzz = threading.Thread(target=self.start_fuzzer,
+                                  args=(config["fuzzer"], port, config["config"], config["input"], out_path))
         t_fuzz.start()
 
         while True:
@@ -127,14 +281,6 @@ class NDFuzzMonitor:
         while exec_time < self.time_limit:
             time.sleep(1)
             exec_time += 1
-
-            if exec_time % self.time_gap == 0:
-                t_scan = threading.Thread(target=self.scan_result, args=(port, out_path))
-                t_scan.start()
-
-        # 最后检查一次结果
-        t_scan = threading.Thread(target=self.scan_result, args=(port, out_path))
-        t_scan.start()
 
         self.logger.debug("[+] Time Limit!")
 
@@ -233,94 +379,25 @@ class NDFuzzMonitor:
 
         self.logger.info("[!] Run Fuzzer...")
         self.start_fuzzer_flag = True
-        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out), get_pty=True)
+        stdin, stdout, stderr = ssh.exec_command(
+            "cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out), get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
 
-    def scan_result(self, port, out):
-        self.logger.debug("[+] Result Scan {}".format(self.result_turn))
-        self.result_turn += 1
-
-        # # Test
-        # self.coverage = "/home/zoe/Desktop/bb_coverage/vsrx_19.4/snmp_0319/vsrx_coverage"
-
-        scan_link = self.start_link(port)
-        ssh = paramiko.SSHClient()
-        ssh._transport = scan_link
-
-        self.logger.debug("[+] Reading Result...")
-        stdin, stdout, stderr = ssh.exec_command("ls {}/crashes".format(out))
-        res = stdout.read().decode().strip()
-
-        pre = []
-        res_list = res.split('\n')
-        with open(self.res_pre, "r") as pre_res:
-            for line in pre_res.readlines():
-                pre.append(line.strip())
-
-        new_list = []
-        for file in res_list:
-            if file == '':
-                continue
-            if file not in pre:
-                new_list.append(file)
-        self.logger.debug("[!] New Result : {}".format(new_list))
-
-        sftp = paramiko.SFTPClient.from_transport(scan_link)
-
-        with open(self.res_pre, "a") as pre_res:
-            for name in new_list:
-                sftp.get("{}/crashes/{}".format(out, name), "result/{}".format(name))
-                pre_res.write(name + "\n")
-        
-        # with open(self.res_new, "w") as res_new:
-        #     res_new.write(" ".join(new_list))
-
-        stdin, stdout, stderr = ssh.exec_command("tail -n 2 {} | head -n 1".format(self.coverage))
-        coverage = stdout.read().decode().strip()
-        self.logger.info("[!] Coverage : {}".format(coverage))
-
-        producer_message = self.generate_producer_message(new_list)
-        self.logger.debug("[+] Return Message : {}".format(json.dumps(producer_message)))
-
-        if not self.run_in_local:
-            producer = TaskQueue()
-            producer.send_task_result(producer_message)
-
-    def generate_producer_message(self, new_list):
-        successed, error, data = self.get_result_data(new_list)
-
-        if self.run_in_local:
-            message = {"source":"null"}
-        else:
-            message = self.message
-
-        message["msg_id"] = str(uuid.uuid4())
-        message["msg_type"] = 2
-        message["destination"] = message["source"]
-        message["successed"] = successed
-        message["error"] = error
-        message["data_uri"] = "null"
-        message["data"] = data
-        message["timestamp"] = int(time.time())
-        message["signature"] = "null"
-
-        return message
-
-    def get_result_data(self, new_list):
-        result_list = []
-        for case_name in new_list:
-            with open("result/" + case_name, "r") as case_f:
-                content = case_f.readlines()
-                result_list.append(' '.join(content).strip())
-        successed = True
-        error = "null"
-        data = "\n".join(result_list)
-        return successed, error, data
-        
 
 if __name__ == '__main__':
-    m = NDFuzzMonitor(run_local=True)
-    m.start()
+    # m = NDFuzzMonitor(run_local=True)
+    # m.start()
 
+    msg = {
+        "params":{
+            "vendor": "asa",
+            "protocol": ["dhcp", "snmp"],
+            "time_limit": 300,
+            "time_gap": 60
+        },
+        "source": "test"
+    }
+    c = NDFuzzMonitor(msg)
+    c.start()
     # m.get_result_data(["00000023.case"])

@@ -6,6 +6,13 @@
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0805",
       "config": "asa",
       "input": "in_asa_snmp_1124"
+    },
+    "dhcp": {
+      "image_start": "/appdata/NFVFuzzer_env/asa_dhcp_fb/start_ubuntu.sh",
+      "firmware": "/home/nfvfuzzer/Desktop/nfv/asa",
+      "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0805",
+      "config": "asa_dhcp",
+      "input": "in_asa_seeds"
     }
   },
   "srx": {
