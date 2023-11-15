@@ -132,9 +132,9 @@ class NDFuzzMonitor:
 
         pre = []
         res_list = res.split('\n')
-        with open(info["file"], "r") as pre_res:
-            for line in pre_res.readlines():
-                pre.append(line.strip())
+        # with open(info["file"], "r") as pre_res:
+        #     for line in pre_res.readlines():
+        #         pre.append(line.strip())
 
         new_list = []
         for file in res_list:
