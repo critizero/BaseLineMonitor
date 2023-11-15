@@ -13,7 +13,7 @@ import uuid
 from producer import *
 
 class NDFuzzMonitor:
-    def __init__(self, message = None):
+    def __init__(self, message = None, run_local = False):
         with open('config.json', 'r') as conf_f:
             self.config = json.load(conf_f)
 
@@ -26,6 +26,8 @@ class NDFuzzMonitor:
         console.setFormatter(formatter)
         self.logger.addHandler(console)
         self.logger.setLevel(logging.DEBUG)
+
+        self.run_in_local = run_local
 
         self.result_turn = 0
 
@@ -92,10 +94,11 @@ class NDFuzzMonitor:
         self.logger.info("[!] Image running at Port {}".format(port))
 
         self.logger.debug('[+] Starting Fuzzer Image')
-        # t_image = threading.Thread(target=self.start_image, args=(config["image_start"],))
-        # self.start_image_flag = False
-        # self.end_image_flag = False
-        # t_image.start()
+        if not self.run_in_local:
+            t_image = threading.Thread(target=self.start_image, args=(config["image_start"],))
+            self.start_image_flag = False
+            self.end_image_flag = False
+            t_image.start()
 
         self.logger.debug('[+] Running firmware Image')
         t_firmware = threading.Thread(target=self.start_firmware, args=(config["firmware"], port))
@@ -163,12 +166,13 @@ class NDFuzzMonitor:
         return transport
 
     def start_firmware(self, path, port):
-        # # 等待镜像启动完成
-        # while True:
-        #     if self.start_image_flag:
-        #         self.logger.debug("[+] Waiting Image Start for 20s...")
-        #         time.sleep(20)
-        #         break
+        # 等待镜像启动完成
+        if not self.run_in_local:
+            while True:
+                if self.start_image_flag:
+                    self.logger.debug("[+] Waiting Image Start for 20s...")
+                    time.sleep(20)
+                    break
 
         self.firmware_link = self.start_link(port)
 
@@ -267,9 +271,11 @@ class NDFuzzMonitor:
         self.logger.info("[!] Coverage : {}".format(coverage))
 
         producer_message = self.generate_producer_message(new_list)
+        self.logger.debug("[+] Return Message : {}".format(json.dumps(producer_message)))
 
-        producer = TaskQueue()
-        producer.send_task_result(producer_message)
+        if not self.run_in_local:
+            producer = TaskQueue()
+            producer.send_task_result(producer_message)
 
     def generate_producer_message(self, new_list):
         successed, error, data = self.get_result_data(new_list)
@@ -300,5 +306,5 @@ class NDFuzzMonitor:
         
 
 if __name__ == '__main__':
-    m = NDFuzzMonitor()
+    m = NDFuzzMonitor(run_local=True)
     m.start()
