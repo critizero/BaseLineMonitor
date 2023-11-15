@@ -44,6 +44,13 @@ class Consumer:
     # Process the received messages
     def process_message(self):
         if self.message['msg_type'] == 0:
+
+            self.message["params"] = {
+                "vendor": "asa",
+                "protocol": ["dhcp", "snmp"],
+                "time_limit": 3000,
+                "time_gap": 60
+            }
             ndfuzz_monitor = NDFuzzMonitor(self.message)
 
             ndfuzz_monitor.start()

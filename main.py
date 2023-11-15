@@ -25,6 +25,8 @@ neko = threading.Lock()
 
 class NDFuzzMonitor:
     def __init__(self, message=None, debug=False):
+        # print(message)
+        # print(message["params"])
         self.message = message
         self.protocols = message["params"]["protocol"]
         self.local_ip = '10.26.81.7'
@@ -42,6 +44,7 @@ class NDFuzzMonitor:
             self.config = json.load(conf_f)
 
         self.is_debug = debug
+
 
     def start(self):
         os.system("rm -f result/*")
@@ -192,7 +195,7 @@ class NDFuzzMonitor:
                 payload_msg_type = ast.literal_eval(content)[0]
                 payload = ast.literal_eval(content)[-1]
                 result = {
-                    "vendor": self.message["params"]["vendor"]
+                    "vendor": self.message["params"]["vendor"], 
                     "protocol": protocol,
                     "message_type": payload_msg_type,
                     "payload": payload
