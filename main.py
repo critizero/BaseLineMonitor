@@ -175,23 +175,34 @@ class NDFuzzMonitor:
 
         return message
 
-    @staticmethod
-    def get_result_data(new_list, protocol):
-        result_dict = {
-            "header": ["protocol", "message type", "payload"]
+    # @staticmethod
+    def get_result_data(self, new_list, protocol):
+
+        keys = {
+            "vendor": "固件",
+            "protocol": "协议",
+            "message_type": "消息类型",
+            "payload": "攻击载荷"
         }
+        value_list = []
         for case_name in new_list:
+            result = {}
             with open("result/{}_{}".format(protocol, case_name), "r") as case_f:
                 content = case_f.readline()
                 payload_msg_type = ast.literal_eval(content)[0]
                 payload = ast.literal_eval(content)[-1]
-                result_dict[protocol + '_' + case_name] = {"protocol": protocol,
-                                                           "message": payload_msg_type,
-                                                           "payload": payload}
-
+                result = {
+                    "vendor": self.message["params"]["vendor"]
+                    "protocol": protocol,
+                    "message_type": payload_msg_type,
+                    "payload": payload
+                }
+                value_list.append(result)
+        
+        result = {"keys": keys, "values": value_list}
         successed = True
         error = "null"
-        data = json.dumps(result_dict)
+        data = json.dumps(result)
         return successed, error, data
 
 
