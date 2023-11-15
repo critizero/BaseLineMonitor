@@ -12,6 +12,12 @@ import time
 import uuid
 from producer import *
 
+
+def create_dir(dir):
+    if not os.path.exists(dir):
+        os.makedirs(dir)
+
+
 class NDFuzzMonitor:
     def __init__(self, message = None, run_local = False):
         with open('config.json', 'r') as conf_f:
@@ -41,7 +47,7 @@ class NDFuzzMonitor:
             self.vendor = "srx"
             self.protocol = "snmp"
             self.time_limit = 300
-            self.time_gap = 0
+            self.time_gap = 60
 
         self.pre_result_idx = None
         self.res_pre = None
@@ -57,6 +63,9 @@ class NDFuzzMonitor:
         self.fuzzer_link = None
 
         self.message = message
+
+        create_dir("log")
+        create_dir("result")
 
     def error(self, error_msg):
         self.logger.error(error_msg)
