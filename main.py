@@ -34,14 +34,15 @@ class NDFuzzMonitor:
         self.logger.setLevel(logging.DEBUG)
 
         self.run_in_local = run_local
+        self.debug_message = True
 
         self.result_turn = 0
 
-        if message:
-            self.vendor = message["paras"]["vendor"]
-            self.protocol = message["paras"]["protocol"]
-            self.time_limit = message["paras"]["time_limit"]
-            self.time_gap = message["paras"]["time_gap"]
+        if message and not self.debug_message:
+            self.vendor = message["params"]["vendor"]
+            self.protocol = message["params"]["protocol"]
+            self.time_limit = message["params"]["time_limit"]
+            self.time_gap = message["params"]["time_gap"]
         else:
             # for local test
             self.vendor = "srx"

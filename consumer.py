@@ -4,32 +4,19 @@ from main import NDFuzzMonitor
 
 # MESSAGE_FILE_NAME = "/appdata/message"
 
-class TaskQueue:
+class Consumer:
     def __init__(self):
-        self.rabbitmq_server_address = '192.168.31.252'
-        self.rabbitmq_server_port = 5672
-        self.message = None
-
-        # RabbitMQ user and password
-        # TODO Please contact the collaborative platform developer and rabbitmq server administrator to add permissions
-        self.rabbitmq_username = 'your_username'
-        self.rabbitmq_password = 'your_password'
+        self.engine_uuid = '07b8e7db09904e68a08bd6047246ee06'  # TODO:1:找协同注册消息队列获取uuid和密码
+        credentials = pika.PlainCredentials(self.engine_uuid, 'mima1234')  #
+        parameters = pika.ConnectionParameters('10.26.81.18', 5672, self.engine_uuid, credentials)
+        self.connection = pika.BlockingConnection(parameters)
 
     def receive_task(self):
-        # Create a connection to the RabbitMQ server
-        credentials = pika.PlainCredentials(self.rabbitmq_username, self.rabbitmq_password)
-        connection = pika.BlockingConnection(pika.ConnectionParameters(self.rabbitmq_server_address, self.rabbitmq_server_port, '/', credentials))
-        channel = connection.channel()
-
-        # Declare a direct exchange
+        channel = self.connection.channel()
         channel.exchange_declare(exchange='direct_exchange', exchange_type='direct')
-
-        # Declare a queue
-        result = channel.queue_declare(queue='', exclusive=True)
+        result = channel.queue_declare(queue='direct_queue')
         queue_name = result.method.queue
-
-        # Bind the queue to the exchange with the routing key
-        channel.queue_bind(exchange='direct_exchange', queue=queue_name, routing_key='engine1')
+        channel.queue_bind(exchange='direct_exchange', queue=queue_name, routing_key=self.engine_uuid)
 
         # Define a callback function to process the message
         def callback(ch, method, properties, body):
@@ -69,3 +56,7 @@ class TaskQueue:
             pass
         elif self.message['msg_type'] == 5:
             pass
+
+if __name__ == '__main__':
+    c = Consumer()
+    c.receive_task()

@@ -5,25 +5,16 @@ import time
 # Create a connection to the RabbitMQ server
 class TaskQueue:
     def __init__(self):
-        self.rabbitmq_server_address = '192.168.31.252' # 已经设置好，无需修改
-        self.rabbitmq_server_port = 5672 # 已经设置好，无需修改
-
-        # RabbitMQ user and password
-        # TODO Please contact the collaborative platform developer and rabbitmq server administrator to add permissions
-        self.rabbitmq_username = 'your_username'  # 找协同在协同服务器上注册
-        self.rabbitmq_password = 'your_password'  # 找协同在协同服务器上注册
+        self.control_uuid = 'aaabbbcccdddeeeba49d9ff1791bbfb0'  # 协同uuid 无需修改
+        self.engine_uuid = '07b8e7db09904e68a08bd6047246ee06'  # TODO:2:使用第一步注册时获取的用户名
+        credentials = pika.PlainCredentials(self.engine_uuid, 'mima1234')  # TODO:1:找协同注册消息队列获取帐号和密码
+        parameters = pika.ConnectionParameters('10.26.81.18', 5672, self.engine_uuid, credentials)  # 连接信息，无需修改
+        self.connection = pika.BlockingConnection(parameters)
 
     def send_task_result(self, message):
-        # Create a connection parameter object, set the address, port, username and password of rabbitmq
-        credentials = pika.PlainCredentials(self.rabbitmq_username, self.rabbitmq_password)
-        # Create a connection object, which is used to connect to the rabbitmq server
-        connection = pika.BlockingConnection(
-            pika.ConnectionParameters(self.rabbitmq_server_address, self.rabbitmq_server_port, '/', credentials))
-        # Create a channel object, which is used to send and receive messages
-        channel = connection.channel()
-
-        # Declare a direct exchange
+        channel = self.connection.channel()
         channel.exchange_declare(exchange='direct_exchange', exchange_type='direct')
+
         # Create a json message with the task information
         # Take TaskResult as example:
 
@@ -47,7 +38,7 @@ class TaskQueue:
         channel.basic_publish(exchange='direct_exchange', routing_key=message['destination'], body=json.dumps(message))
         print("Sent successfully!")
         # Close the connection
-        connection.close()
+        self.connection.close()
 
     # Define a function to send heartbeat messages, accept a time interval parameter
     def send_heartbeat(self, interval=60): # set the default time interval to 60 seconds
@@ -113,4 +104,3 @@ class TaskQueue:
 #   "timestamp": "20231113094936",
 #   "signature": "MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQC6y+Z8fHJlZj3nS1Q9PfMtj4zLjZt9uRzqZkVwYXJ0aW5nLmNvbS9hcGkvdjEvbWVzc2FnZ"
 # }
-

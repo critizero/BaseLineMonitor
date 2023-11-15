@@ -41,5 +41,5 @@ class Producer:
 
 if __name__ == '__main__':
     a = Producer()
-    destination = '59c90dc5d86342f293d824cded01bfa0' # 设置自己的 uuid
+    destination = '07b8e7db09904e68a08bd6047246ee06' # 设置自己的 uuid
     a.send_task(**dict(vhost=destination))
