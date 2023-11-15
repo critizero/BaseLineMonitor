@@ -202,9 +202,9 @@ class NDFuzzMonitor:
 
         self.start_firmware_flag = True
         self.logger.info("[!] Run Firmware...")
-        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh && sudo ./start_qemu.sh".format(path), get_pty=True)
-        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./start_qemu.sh".format(path),
-        #                                          get_pty=True)
+        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh && sudo ./start_qemu.sh".format(path), get_pty=True)
+        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./start_qemu.sh".format(path),
+                                                 get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
 
@@ -289,10 +289,14 @@ class NDFuzzMonitor:
     def generate_producer_message(self, new_list):
         successed, error, data = self.get_result_data(new_list)
 
-        message = self.message
+        if self.run_in_local:
+            message = {"source":"null"}
+        else:
+            message = self.message
+
         message["msg_id"] = str(uuid.uuid4())
         message["msg_type"] = 2
-        message["destination"] = self.message["source"]
+        message["destination"] = message["source"]
         message["successed"] = successed
         message["error"] = error
         message["data_uri"] = "null"
@@ -305,7 +309,7 @@ class NDFuzzMonitor:
     def get_result_data(self, new_list):
         result_list = []
         for case_name in new_list:
-            with open(case_name, "r") as case_f:
+            with open("result/" + case_name, "r") as case_f:
                 content = case_f.readlines()
                 result_list.append(' '.join(content).strip())
         successed = True
@@ -317,3 +321,5 @@ class NDFuzzMonitor:
 if __name__ == '__main__':
     m = NDFuzzMonitor(run_local=True)
     m.start()
+
+    # m.get_result_data(["00000023.case"])
