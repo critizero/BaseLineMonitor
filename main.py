@@ -11,6 +11,7 @@ import time
 
 import uuid
 from producer import *
+import ast
 
 
 def create_dir(dir):
@@ -306,21 +307,22 @@ class NDFuzzMonitor:
         message["signature"] = "null"
 
         return message
-
-    def get_result_data(self, new_list):
-        result_list = []
+    
+    @staticmethod
+    def get_result_data(new_list):
+        result_dict = {}
         for case_name in new_list:
             with open("result/" + case_name, "r") as case_f:
-                content = case_f.readlines()
-                result_list.append(' '.join(content).strip())
+                content = case_f.readline()
+                payload = ast.literal_eval(content)[-1]
+                result_dict[case_name] = payload
+                
         successed = True
         error = "null"
-        data = "\n".join(result_list)
+        data = json.dumps(result_dict)
         return successed, error, data
         
 
 if __name__ == '__main__':
     m = NDFuzzMonitor(run_local=True)
     m.start()
-
-    # m.get_result_data(["00000023.case"])
