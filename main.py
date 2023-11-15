@@ -299,7 +299,6 @@ class NDFuzzMonitor:
         return successed, error, data
         
 
-
 if __name__ == '__main__':
     m = NDFuzzMonitor()
     m.start()

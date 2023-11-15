@@ -1,7 +1,7 @@
 {
   "asa": {
     "snmp": {
-      "image_start": "/home/dell/Desktop/NFVFuzzer_env/asa_snmp_fb/start_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/asa_snmp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/nfv/asa",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0805",
       "config": "asa",
@@ -10,7 +10,7 @@
   },
   "srx": {
     "snmp": {
-      "image_start": "/home/dell/Desktop/dhk_env_bak/srx_ntp_snmp_fb_bak/start_srxnfv_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/srx_ntp_snmp_fb_bak/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/nfv",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "vsrx",
@@ -19,7 +19,7 @@
   },
   "vmx": {
     "snmp": {
-      "image_start": "/home/dell/Desktop/dhk_env_bak/vmx/start_vmxnfv_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/vmx/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/nfv",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "vmx_snmpv2",
@@ -28,7 +28,7 @@
   },
   "arista": {
     "ntp": {
-      "image_start": "/home/dell/Desktop/NFVFuzzer_env/arista_ntp_mutiny_fb/start_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/arista_ntp_mutiny_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/arista_nfv",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0722",
       "config": "vsrx",
@@ -37,7 +37,7 @@
   },
   "fortinet": {
     "snmp": {
-      "image_start": "/home/dell/Desktop/NFVFuzzer_env/fortinet_zsnmp_fb/start_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/fortinet_zsnmp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/fortinet-FGT-v6.0.8-build0303",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0814",
       "config": "fortinet_608_snmp",
@@ -46,7 +46,7 @@
   },
   "sma": {
     "snmp": {
-      "image_start": "/home/dell/Desktop/NFVFuzzer_env/sma_snmp_fb/start_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/sma_snmp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/sonicwall_zsnmp",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0814",
       "config": "sonicwall_sma",
@@ -55,7 +55,7 @@
   },
   "sra": {
     "snmp": {
-      "image_start": "/home/dell/Desktop/NFVFuzzer_env/sra_snmp_fb/start_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/sra_snmp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/env/sonicwall_zsnmp",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "sonicwall_sra",
