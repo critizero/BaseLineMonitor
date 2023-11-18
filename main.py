@@ -269,7 +269,6 @@ class NDFuzzController:
 
         self.pre_result_idx = None
         self.res_pre = None
-        # self.res_new = None
         self.coverage = None
 
         self.start_image_flag = False
@@ -302,16 +301,12 @@ class NDFuzzController:
 
         config = self.config[self.vendor][self.protocol]
         out_path = "{}/out_{}_{}_BY_BLM".format(config["fuzzer"], self.vendor, self.protocol)
-        # out_path = "{}/out_srx_zsnmp_fb_1116/".format(config["fuzzer"])
         self.info("[!] Output file path : {}".format(out_path))
 
         # 本地结果
         self.res_pre = "log/{}_{}_pre.txt".format(self.vendor, self.protocol)
-        # self.res_new = "log/{}_{}_new.txt".format(vendor, protocol)
         with open(self.res_pre, "a+") as res_pre:
             res_pre.truncate(0)
-        # with open(self.res_new, "a+") as res_new:
-        #     res_new.truncate(0)
         os.system("rm -f result/*")
 
         self.debug('[+] Getting Running Port')
@@ -404,17 +399,6 @@ class NDFuzzController:
         self.debug("[+] Communicate via SSH")
         ssh = paramiko.SSHClient()
         ssh._transport = self.firmware_link
-
-        # stdin, stdout, stderr = ssh.exec_command("cd {} &&ls".format(path), get_pty=True)
-        # time.sleep(1)
-        # stdin.write("mima1234\n")
-        # print(stdout.read().decode())
-
-        # self.logger.info("[!] Set Firmware network...")
-        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh".format(path), get_pty=True)
-        # time.sleep(1)
-        # stdin.write("mima1234\n")
-        # print(stdout.read().decode())
 
         self.start_firmware_flag = True
         self.info("[!] Run Firmware...")
