@@ -12,7 +12,7 @@ import time
 import ast
 
 import uuid
-from producer import *
+# from producer import *
 
 
 def create_dir(dir):
@@ -29,7 +29,7 @@ class NDFuzzMonitor:
         # print(message["params"])
         self.message = message
         self.protocols = message["params"]["protocol"]
-        self.local_ip = '10.26.81.7'
+        self.local_ip = '10.26.81.61'
         self.thread_info = {}
 
         self.logger = logging.getLogger('BaseLineMonitor')
@@ -93,7 +93,8 @@ class NDFuzzMonitor:
             "path": out_path,
             "port": port,
             "file": res_pre,
-            "config": "{}/Configs/{}.config".format(config["fuzzer"], config["config"])
+            "config": "{}/Configs/{}.config".format(config["fuzzer"], config["config"]),
+            "cv_file": "{}_{}_coverage".format(msg["vendor"], msg["protocol"])
         }
 
         neko.acquire()
@@ -120,6 +121,7 @@ class NDFuzzMonitor:
         return transport
 
     def run_scan(self):
+        self._data = []
         self.info("=======SCANNING RESULT======")
         for protocol in self.protocols:
             t_scanner = threading.Thread(target=self.get_result, args=(self.thread_info[protocol], protocol))
@@ -135,8 +137,11 @@ class NDFuzzMonitor:
         data = {"keys": keys, "data": self._data}
         producer_message = self.generate_producer_message(data)
 
-        producer = TaskQueue()
-        producer.send_task_result(producer_message)
+        self.info("Return Message : {}".format(producer_message))
+
+        if self._data:
+            producer = TaskQueue()
+            producer.send_task_result(producer_message)
 
     def get_result(self, info, protocol):
 
@@ -151,8 +156,9 @@ class NDFuzzMonitor:
             basic_block_coverage_path = ""
             for line in res.split("\n"):
                 if "basic_block_coverage_path" in line:
-                    basic_block_coverage_path = re.findall(r"basic_block_coverage_path = (.*)", line)
+                    basic_block_coverage_path = re.findall(r"basic_block_coverage_path = (.*)", line)[0]
                     break
+            self.info("<{}> | Coverage File at: {}".format(protocol, basic_block_coverage_path))
             info["coverage"] = basic_block_coverage_path
 
             neko.acquire()
@@ -183,7 +189,7 @@ class NDFuzzMonitor:
                 sftp.get("{}/crashes/{}".format(info["path"], name), "result/{}_{}".format(protocol, name))
                 pre_res.write(name + "\n")
 
-        sftp.get("{}/nfv_coverage".format(info["coverage"]), "result/nfv_coverage")
+        sftp.get("{}/nfv_coverage".format(info["coverage"]), "result/{}".format(info["cv_file"]))
 
         # stdin, stdout, stderr = ssh.exec_command("tail -n 2 {} | head -n 1".format(self.coverage))
         # coverage = stdout.read().decode().strip()
@@ -236,7 +242,7 @@ class NDFuzzMonitor:
 
 class NDFuzzController:
     def __init__(self, message=None, run_local=False, config=None, logger=None):
-        self.local_ip = '10.26.81.7'
+        self.local_ip = '10.26.81.61'
 
         if not config:
             with open('config.json', 'r') as conf_f:
@@ -417,6 +423,8 @@ class NDFuzzController:
                                                  get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
+        # self.debug("Stdout: {}".format(stdout.read().decode()))
+        # self.debug("Stderr: {}".format(stderr.read().decode()))
 
     def start_fuzzer(self, path, port, config, seed, out):
         # 等待固件线程启动
@@ -446,6 +454,8 @@ class NDFuzzController:
             "cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out), get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
+        # self.debug("Stdout: {}".format(stdout.read().decode()))
+        # self.debug("Stderr: {}".format(stderr.read().decode()))
 
 
 if __name__ == '__main__':
