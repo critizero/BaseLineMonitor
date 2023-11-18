@@ -45,6 +45,9 @@ class NDFuzzMonitor:
 
         self.is_debug = debug
 
+        self._data = []
+        self._error = ""
+        self._success = True
 
     def start(self):
         os.system("rm -f result/*")
@@ -89,7 +92,8 @@ class NDFuzzMonitor:
         info = {
             "path": out_path,
             "port": port,
-            "file": res_pre
+            "file": res_pre,
+            "config": "{}/Configs/{}.config".format(config["fuzzer"], config["config"])
         }
 
         neko.acquire()
@@ -120,6 +124,19 @@ class NDFuzzMonitor:
         for protocol in self.protocols:
             t_scanner = threading.Thread(target=self.get_result, args=(self.thread_info[protocol], protocol))
             t_scanner.start()
+            t_scanner.join()
+
+        keys = {
+            "vendor": "固件",
+            "protocol": "协议",
+            "message_type": "消息类型",
+            "payload": "攻击载荷"
+        }
+        data = {"keys": keys, "data": self._data}
+        producer_message = self.generate_producer_message(data)
+
+        producer = TaskQueue()
+        producer.send_task_result(producer_message)
 
     def get_result(self, info, protocol):
 
@@ -127,8 +144,24 @@ class NDFuzzMonitor:
         ssh = paramiko.SSHClient()
         ssh._transport = scan_link
 
+        if "coverage" not in info:
+            stdin, stdout, stderr = ssh.exec_command("cat {}".format(info["config"]))
+            res = stdout.read().decode().strip()
+            time.sleep(1)
+            basic_block_coverage_path = ""
+            for line in res.split("\n"):
+                if "basic_block_coverage_path" in line:
+                    basic_block_coverage_path = re.findall(r"basic_block_coverage_path = (.*)", line)
+                    break
+            info["coverage"] = basic_block_coverage_path
+
+            neko.acquire()
+            self.thread_info[protocol]["coverage"] = basic_block_coverage_path
+            neko.release()
+
         stdin, stdout, stderr = ssh.exec_command("ls {}/crashes".format(info["path"]))
         res = stdout.read().decode().strip()
+        time.sleep(1)
 
         pre = []
         res_list = res.split('\n')
@@ -150,27 +183,28 @@ class NDFuzzMonitor:
                 sftp.get("{}/crashes/{}".format(info["path"], name), "result/{}_{}".format(protocol, name))
                 pre_res.write(name + "\n")
 
+        sftp.get("{}/nfv_coverage".format(info["coverage"]), "result/nfv_coverage")
+
         # stdin, stdout, stderr = ssh.exec_command("tail -n 2 {} | head -n 1".format(self.coverage))
         # coverage = stdout.read().decode().strip()
 
         if not self.is_debug and new_list:
-            producer_message = self.generate_producer_message(new_list, protocol)
+            successed, error, data = self.get_result_data(new_list, protocol)
 
-            self.logger.info("[{}] Return Message : {}".format(protocol, producer_message))
+            if not successed:
+                self._error += error + '\n'
+                self._success = False
 
-            producer = TaskQueue()
-            producer.send_task_result(producer_message)
+            self._data.extend(data)
 
-    def generate_producer_message(self, new_list, protocol):
-        successed, error, data = self.get_result_data(new_list, protocol)
-
+    def generate_producer_message(self, data):
         message = self.message
 
         message["msg_id"] = str(uuid.uuid4())
         message["msg_type"] = 2
         message["destination"] = message["source"]
-        message["successed"] = successed
-        message["error"] = error
+        message["successed"] = self._success
+        message["error"] = self._error
         message["data_uri"] = "null"
         message["data"] = data
         message["timestamp"] = int(time.time())
@@ -181,15 +215,8 @@ class NDFuzzMonitor:
     # @staticmethod
     def get_result_data(self, new_list, protocol):
 
-        keys = {
-            "vendor": "固件",
-            "protocol": "协议",
-            "message_type": "消息类型",
-            "payload": "攻击载荷"
-        }
         value_list = []
         for case_name in new_list:
-            result = {}
             with open("result/{}_{}".format(protocol, case_name), "r") as case_f:
                 content = case_f.readline()
                 payload_msg_type = ast.literal_eval(content)[0]
@@ -201,12 +228,10 @@ class NDFuzzMonitor:
                     "payload": payload
                 }
                 value_list.append(result)
-        
-        result = {"keys": keys, "values": value_list}
+
         successed = True
         error = "null"
-        data = json.dumps(result)
-        return successed, error, data
+        return successed, error, value_list
 
 
 class NDFuzzController:
