@@ -8,13 +8,13 @@ class Consumer:
     def __init__(self):
         self.engine_uuid = '07b8e7db09904e68a08bd6047246ee06'  # TODO:1:找协同注册消息队列获取uuid和密码
         credentials = pika.PlainCredentials(self.engine_uuid, 'mima1234')  #
-        parameters = pika.ConnectionParameters('10.26.81.18', 5672, self.engine_uuid, credentials)
+        parameters = pika.ConnectionParameters('10.26.81.92', 5672, '/', credentials)
         self.connection = pika.BlockingConnection(parameters)
 
     def receive_task(self):
         channel = self.connection.channel()
         channel.exchange_declare(exchange='direct_exchange', exchange_type='direct')
-        result = channel.queue_declare(queue='direct_queue')
+        result = channel.queue_declare(queue=self.engine_uuid)
         queue_name = result.method.queue
         channel.queue_bind(exchange='direct_exchange', queue=queue_name, routing_key=self.engine_uuid)
 

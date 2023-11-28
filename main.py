@@ -45,7 +45,6 @@ class NDFuzzMonitor:
 
         self.is_debug = debug
 
-
     def start(self):
         os.system("rm -f result/*")
         for protocol in self.protocols:
@@ -132,9 +131,9 @@ class NDFuzzMonitor:
 
         pre = []
         res_list = res.split('\n')
-        # with open(info["file"], "r") as pre_res:
-        #     for line in pre_res.readlines():
-        #         pre.append(line.strip())
+        with open(info["file"], "r") as pre_res:
+            for line in pre_res.readlines():
+                pre.append(line.strip())
 
         new_list = []
         for file in res_list:
@@ -162,13 +161,15 @@ class NDFuzzMonitor:
             producer.send_task_result(producer_message)
 
     def generate_producer_message(self, new_list, protocol):
+        import copy
         successed, error, data = self.get_result_data(new_list, protocol)
 
         message = self.message
 
         message["msg_id"] = str(uuid.uuid4())
         message["msg_type"] = 2
-        message["destination"] = message["source"]
+        message["destination"] = copy.deepcopy(message["source"])
+        message['source'] = '07b8e7db09904e68a08bd6047246ee06'
         message["successed"] = successed
         message["error"] = error
         message["data_uri"] = "null"
@@ -202,11 +203,10 @@ class NDFuzzMonitor:
                 }
                 value_list.append(result)
         
-        result = {"keys": keys, "values": value_list}
+        result = {"items": value_list}
         successed = True
         error = "null"
-        data = json.dumps(result)
-        return successed, error, data
+        return successed, error, result
 
 
 class NDFuzzController:

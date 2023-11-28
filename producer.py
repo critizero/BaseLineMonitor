@@ -8,13 +8,14 @@ class TaskQueue:
         self.control_uuid = 'aaabbbcccdddeeeba49d9ff1791bbfb0'  # 协同uuid 无需修改
         self.engine_uuid = '07b8e7db09904e68a08bd6047246ee06'  # TODO:2:使用第一步注册时获取的用户名
         credentials = pika.PlainCredentials(self.engine_uuid, 'mima1234')  # TODO:1:找协同注册消息队列获取帐号和密码
-        parameters = pika.ConnectionParameters('10.26.81.18', 5672, self.engine_uuid, credentials)  # 连接信息，无需修改
+        parameters = pika.ConnectionParameters('10.26.81.92', 5672,'/', credentials)  # 连接信息，无需修改
         self.connection = pika.BlockingConnection(parameters)
 
     def send_task_result(self, message):
         channel = self.connection.channel()
         channel.exchange_declare(exchange='direct_exchange', exchange_type='direct')
-
+        
+        message['destination'] = self.control_uuid
         # Create a json message with the task information
         # Take TaskResult as example:
 

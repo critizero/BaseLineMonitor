@@ -10,7 +10,7 @@ class Producer:
         self.credentials = pika.PlainCredentials('vkg_test', 'mima1234')
 
     def send_task(self, **kwargs):
-        parameters = pika.ConnectionParameters('10.26.81.18', 5672, kwargs['vhost'], self.credentials)
+        parameters = pika.ConnectionParameters('10.26.81.18', 5672, '/', self.credentials)
         connection = pika.BlockingConnection(parameters)
         channel = connection.channel()
         channel.exchange_declare(exchange='direct_exchange', exchange_type='direct')
@@ -20,7 +20,7 @@ class Producer:
             "task_id": 'ba6d70eadbcd43c3aa799ae0a5e8229d',  # 任务基线任务ID
             "sub_task_id": 'e03474d13e9d47908ea86b120bc7a056',  # 子任务ID
             "source": 'aaabbbcccdddeeeba49d9ff1791bbfb0',  # 协同uuid
-            "destination": kwargs['vhost'],  # 工具uuid
+            "destination": kwargs.get('vhost'),  # 工具uuid
             "action": 0,  # 0:创建并执行任务; 1:创建并挂起任务; 2:挂起已创建的任务; 3:恢复被挂起的任务; 4:取消任务; 5:重新执行;
             "params": {  # 引擎自行跑任务需要的配置
 
