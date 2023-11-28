@@ -12,7 +12,7 @@ import time
 import ast
 
 import uuid
-from producer import *
+# from producer import *
 
 
 def create_dir(dir):
@@ -29,7 +29,7 @@ class NDFuzzMonitor:
         # print(message["params"])
         self.message = message
         self.protocols = message["params"]["protocol"]
-        self.local_ip = '10.26.81.7'
+        self.local_ip = '10.26.81.61'
         self.thread_info = {}
 
         self.logger = logging.getLogger('BaseLineMonitor')
@@ -44,6 +44,10 @@ class NDFuzzMonitor:
             self.config = json.load(conf_f)
 
         self.is_debug = debug
+
+        self._data = []
+        self._error = ""
+        self._success = True
 
     def start(self):
         os.system("rm -f result/*")
@@ -88,7 +92,9 @@ class NDFuzzMonitor:
         info = {
             "path": out_path,
             "port": port,
-            "file": res_pre
+            "file": res_pre,
+            "config": "{}/Configs/{}.config".format(config["fuzzer"], config["config"]),
+            "cv_file": "{}_{}_coverage".format(msg["vendor"], msg["protocol"])
         }
 
         neko.acquire()
@@ -115,10 +121,27 @@ class NDFuzzMonitor:
         return transport
 
     def run_scan(self):
+        self._data = []
         self.info("=======SCANNING RESULT======")
         for protocol in self.protocols:
             t_scanner = threading.Thread(target=self.get_result, args=(self.thread_info[protocol], protocol))
             t_scanner.start()
+            t_scanner.join()
+
+        keys = {
+            "vendor": "固件",
+            "protocol": "协议",
+            "message_type": "消息类型",
+            "payload": "攻击载荷"
+        }
+        data = {"keys": keys, "data": self._data}
+        producer_message = self.generate_producer_message(data)
+
+        self.info("Return Message : {}".format(producer_message))
+
+        if self._data:
+            producer = TaskQueue()
+            producer.send_task_result(producer_message)
 
     def get_result(self, info, protocol):
 
@@ -126,8 +149,25 @@ class NDFuzzMonitor:
         ssh = paramiko.SSHClient()
         ssh._transport = scan_link
 
+        if "coverage" not in info:
+            stdin, stdout, stderr = ssh.exec_command("cat {}".format(info["config"]))
+            res = stdout.read().decode().strip()
+            time.sleep(1)
+            basic_block_coverage_path = ""
+            for line in res.split("\n"):
+                if "basic_block_coverage_path" in line:
+                    basic_block_coverage_path = re.findall(r"basic_block_coverage_path = (.*)", line)[0]
+                    break
+            self.info("<{}> | Coverage File at: {}".format(protocol, basic_block_coverage_path))
+            info["coverage"] = basic_block_coverage_path
+
+            neko.acquire()
+            self.thread_info[protocol]["coverage"] = basic_block_coverage_path
+            neko.release()
+
         stdin, stdout, stderr = ssh.exec_command("ls {}/crashes".format(info["path"]))
         res = stdout.read().decode().strip()
+        time.sleep(1)
 
         pre = []
         res_list = res.split('\n')
@@ -149,21 +189,22 @@ class NDFuzzMonitor:
                 sftp.get("{}/crashes/{}".format(info["path"], name), "result/{}_{}".format(protocol, name))
                 pre_res.write(name + "\n")
 
+        sftp.get("{}/nfv_coverage".format(info["coverage"]), "result/{}".format(info["cv_file"]))
+
         # stdin, stdout, stderr = ssh.exec_command("tail -n 2 {} | head -n 1".format(self.coverage))
         # coverage = stdout.read().decode().strip()
 
         if not self.is_debug and new_list:
-            producer_message = self.generate_producer_message(new_list, protocol)
+            successed, error, data = self.get_result_data(new_list, protocol)
 
-            self.logger.info("[{}] Return Message : {}".format(protocol, producer_message))
+            if not successed:
+                self._error += error + '\n'
+                self._success = False
 
-            producer = TaskQueue()
-            producer.send_task_result(producer_message)
-
-    def generate_producer_message(self, new_list, protocol):
+            self._data.extend(data)
+            
+    def generate_producer_message(self, data):
         import copy
-        successed, error, data = self.get_result_data(new_list, protocol)
-
         message = self.message
 
         message["msg_id"] = str(uuid.uuid4())
@@ -182,15 +223,8 @@ class NDFuzzMonitor:
     # @staticmethod
     def get_result_data(self, new_list, protocol):
 
-        keys = {
-            "vendor": "固件",
-            "protocol": "协议",
-            "message_type": "消息类型",
-            "payload": "攻击载荷"
-        }
         value_list = []
         for case_name in new_list:
-            result = {}
             with open("result/{}_{}".format(protocol, case_name), "r") as case_f:
                 content = case_f.readline()
                 payload_msg_type = ast.literal_eval(content)[0]
@@ -211,7 +245,7 @@ class NDFuzzMonitor:
 
 class NDFuzzController:
     def __init__(self, message=None, run_local=False, config=None, logger=None):
-        self.local_ip = '10.26.81.7'
+        self.local_ip = '10.26.81.61'
 
         if not config:
             with open('config.json', 'r') as conf_f:
@@ -238,7 +272,6 @@ class NDFuzzController:
 
         self.pre_result_idx = None
         self.res_pre = None
-        # self.res_new = None
         self.coverage = None
 
         self.start_image_flag = False
@@ -271,16 +304,12 @@ class NDFuzzController:
 
         config = self.config[self.vendor][self.protocol]
         out_path = "{}/out_{}_{}_BY_BLM".format(config["fuzzer"], self.vendor, self.protocol)
-        # out_path = "{}/out_srx_zsnmp_fb_1116/".format(config["fuzzer"])
         self.info("[!] Output file path : {}".format(out_path))
 
         # 本地结果
         self.res_pre = "log/{}_{}_pre.txt".format(self.vendor, self.protocol)
-        # self.res_new = "log/{}_{}_new.txt".format(vendor, protocol)
         with open(self.res_pre, "a+") as res_pre:
             res_pre.truncate(0)
-        # with open(self.res_new, "a+") as res_new:
-        #     res_new.truncate(0)
         os.system("rm -f result/*")
 
         self.debug('[+] Getting Running Port')
@@ -374,17 +403,6 @@ class NDFuzzController:
         ssh = paramiko.SSHClient()
         ssh._transport = self.firmware_link
 
-        # stdin, stdout, stderr = ssh.exec_command("cd {} &&ls".format(path), get_pty=True)
-        # time.sleep(1)
-        # stdin.write("mima1234\n")
-        # print(stdout.read().decode())
-
-        # self.logger.info("[!] Set Firmware network...")
-        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh".format(path), get_pty=True)
-        # time.sleep(1)
-        # stdin.write("mima1234\n")
-        # print(stdout.read().decode())
-
         self.start_firmware_flag = True
         self.info("[!] Run Firmware...")
         # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh && sudo ./start_qemu.sh".format(path), get_pty=True)
@@ -392,6 +410,8 @@ class NDFuzzController:
                                                  get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
+        # self.debug("Stdout: {}".format(stdout.read().decode()))
+        # self.debug("Stderr: {}".format(stderr.read().decode()))
 
     def start_fuzzer(self, path, port, config, seed, out):
         # 等待固件线程启动
@@ -421,6 +441,8 @@ class NDFuzzController:
             "cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out), get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
+        # self.debug("Stdout: {}".format(stdout.read().decode()))
+        # self.debug("Stderr: {}".format(stderr.read().decode()))
 
 
 if __name__ == '__main__':
