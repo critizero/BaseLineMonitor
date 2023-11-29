@@ -27,7 +27,7 @@ class Producer:
             "data": {
                 'target_file': {'file_name': 'httpd',
                                 'storage_uri': '2d40f37630b5a46c27254c06dee90580',
-                                'vendor': 'srx'}
+                                'vendor': 'sma'}
             },
             "timestamp": datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3],
             "signature": '暂时空'

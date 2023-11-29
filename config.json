@@ -71,7 +71,7 @@
     "snmp": {
       "image_start": "/appdata/NFVFuzzer_env/sma_snmp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/sonicwall_zsnmp",
-      "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0814",
+      "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0804",
       "config": "sonicwall_sma",
       "input": "in_sonicwall_sma"
     }
