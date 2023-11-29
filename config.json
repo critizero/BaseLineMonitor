@@ -84,5 +84,14 @@
       "config": "sonicwall_sra",
       "input": "in_sonicwall_sra"
     }
+  },
+  "citrix": {
+    "snmp": {
+      "image_start": "/appdata/NFVFuzzer_env/citrix_fb/start_ubuntu.sh",
+      "firmware": "/home/nfvfuzzer/Desktop/nfv",
+      "fuzzer": "/home/nfvfuzzer/Zfuzz_snmp-master",
+      "config": "",
+      "input": "in_citrix_0327"
+    }
   }
 }

@@ -23,12 +23,14 @@ def create_dir(dir):
 neko = threading.Lock()
 LOCAL_IP = '10.26.81.7'
 
+
 class NDFuzzMonitor:
     def __init__(self, message=None, debug=False):
         # print(message)
         # print(message["params"])
         self.message = message
-        self.protocols = message["params"]["protocol"]
+        # self.protocols = message["params"]["protocol"]
+        self.protocols = []
         self.local_ip = LOCAL_IP
         self.thread_info = {}
 
@@ -42,6 +44,9 @@ class NDFuzzMonitor:
 
         with open('config.json', 'r') as conf_f:
             self.config = json.load(conf_f)
+
+        for protocol in self.config[message["params"]["vendor"]]:
+            self.protocols.append(protocol)
 
         self.is_debug = debug
 
@@ -283,6 +288,9 @@ class NDFuzzController:
         self.fuzzer_link = None
 
         self.message = message
+        self._mode = "NDFuzz"
+        if self.vendor == "citrix" and self.protocol == "snmp":
+            self._mode = "Zsnmp"
 
         create_dir("log")
         create_dir("result")
@@ -427,22 +435,26 @@ class NDFuzzController:
         ssh = paramiko.SSHClient()
         ssh._transport = self.fuzzer_link
 
-        stdin, stdout, stderr = ssh.exec_command("cat {}/Configs/{}.config".format(path, config))
+        if self._mode == "NDFuzz":
+            stdin, stdout, stderr = ssh.exec_command("cat {}/Configs/{}.config".format(path, config))
 
-        lines = stdout.read().decode().split('\n')
-        for line in lines:
-            if "coverage_file =" in line:
-                self.coverage = line.split("=")[1].strip()
-        self.info("[!] Coverage File : {}".format(self.coverage))
+            lines = stdout.read().decode().split('\n')
+            for line in lines:
+                if "coverage_file =" in line:
+                    self.coverage = line.split("=")[1].strip()
+            self.info("[!] Coverage File : {}".format(self.coverage))
 
-        self.info("[!] Run Fuzzer...")
-        self.start_fuzzer_flag = True
-        stdin, stdout, stderr = ssh.exec_command(
-            "cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out), get_pty=True)
-        time.sleep(1)
-        stdin.write("mima1234\n")
-        # self.debug("Stdout: {}".format(stdout.read().decode()))
-        # self.debug("Stderr: {}".format(stderr.read().decode()))
+            self.info("[!] Run Fuzzer...")
+            self.start_fuzzer_flag = True
+            stdin, stdout, stderr = ssh.exec_command(
+                "cd {} && sudo python start.py -c {} -i {} -o {} --overwrite".format(path, config, seed, out), get_pty=True)
+            time.sleep(1)
+            stdin.write("mima1234\n")
+            # self.debug("Stdout: {}".format(stdout.read().decode()))
+            # self.debug("Stderr: {}".format(stderr.read().decode()))
+
+        elif self._mode == "Zsnmp":
+            pass
 
 
 if __name__ == '__main__':
