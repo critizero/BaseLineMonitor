@@ -33,8 +33,8 @@
   },
   "srx": {
     "snmp": {
-      "image_start": "/appdata/NFVFuzzer_env/srx_ntp_snmp_fb_bak/start_ubuntu.sh",
-      "firmware": "/home/nfvfuzzer/Desktop/nfv",
+      "image_start": "/appdata/NFVFuzzer_env/srx_zsnmp_fb/start_ubuntu.sh",
+      "firmware": "/home/nfvfuzzer/Desktop/srx_nfv_ntp",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "vsrx",
       "input": "in_juniper"
@@ -42,7 +42,7 @@
   },
   "vmx": {
     "snmp": {
-      "image_start": "/appdata/NFVFuzzer_env/vmx/start_ubuntu.sh",
+      "image_start": "/appdata/NFVFuzzer_env/vmx_snmp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/nfv",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "vmx_snmpv2",

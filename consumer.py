@@ -45,17 +45,15 @@ class Consumer:
     def process_message(self):
         if self.message['msg_type'] == 0:
 
-            self.message["params"]["time_limit"] \
-                = self.message["params"]["feedback_time"] * 3600
-            self.message["params"]["time_gap"] \
-                = self.message["params"]["execution_time"] * 60
 
-            # self.message["params"] = {
-            #     "vendor": "asa",
-            #     "protocol": ["dhcp", "snmp"],
-            #     "time_limit": 3000,
-            #     "time_gap": 60
-            # }
+            self.message["params"] = {
+                "vendor": self.message["data"]["target_file"]["vendor"],
+                # "protocol": ["dhcp", "snmp"],
+                "time_limit": self.message["params"]["execution_time"] * 3600,
+                "time_gap": self.message["params"]["feedback_time"] * 60
+            }
+            # print(self.message["params"]["time_limit"], self.message["params"]["time_gap"])
+
             ndfuzz_monitor = NDFuzzMonitor(self.message)
 
             ndfuzz_monitor.start()

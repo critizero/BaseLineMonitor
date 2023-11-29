@@ -22,13 +22,12 @@ class Producer:
             "source": 'aaabbbcccdddeeeba49d9ff1791bbfb0',  # 协同uuid
             "destination": kwargs.get('vhost'),  # 工具uuid
             "action": 0,  # 0:创建并执行任务; 1:创建并挂起任务; 2:挂起已创建的任务; 3:恢复被挂起的任务; 4:取消任务; 5:重新执行;
-            "params": {  # 引擎自行跑任务需要的配置
-
-            },
+            "params": {'feedback_time': 1, 'execution_time': 3},
             "data_uri": None,
             "data": {
                 'target_file': {'file_name': 'httpd',
-                                'storage_uri': '2d40f37630b5a46c27254c06dee90580'}
+                                'storage_uri': '2d40f37630b5a46c27254c06dee90580',
+                                'vendor': 'srx'}
             },
             "timestamp": datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3],
             "signature": '暂时空'

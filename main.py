@@ -12,7 +12,7 @@ import time
 import ast
 
 import uuid
-# from producer import *
+from producer import *
 
 
 def create_dir(dir):
@@ -139,7 +139,8 @@ class NDFuzzMonitor:
             "message_type": "消息类型",
             "payload": "攻击载荷"
         }
-        data = {"keys": keys, "data": self._data}
+        # data = {"keys": keys, "data": self._data}
+        data = { "items" : self._data }
         producer_message = self.generate_producer_message(data)
 
         self.info("Return Message : {}".format(producer_message))
@@ -242,7 +243,9 @@ class NDFuzzMonitor:
                 }
                 value_list.append(result)
         
-        result = {"items": value_list}
+        # result = {"items": value_list}
+        result = value_list
+        # print(value_list)
         successed = True
         error = "null"
         return successed, error, result
@@ -413,9 +416,8 @@ class NDFuzzController:
 
         self.start_firmware_flag = True
         self.info("[!] Run Firmware...")
-        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh && sudo ./start_qemu.sh".format(path), get_pty=True)
-        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./start_qemu.sh".format(path),
-                                                 get_pty=True)
+        stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./network_setup.sh && sudo ./start_qemu.sh".format(path), get_pty=True)
+        # stdin, stdout, stderr = ssh.exec_command("cd {} && sudo ./start_qemu.sh".format(path), get_pty=True)
         time.sleep(1)
         stdin.write("mima1234\n")
         # self.debug("Stdout: {}".format(stdout.read().decode()))
