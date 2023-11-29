@@ -10,7 +10,7 @@ class Producer:
         self.credentials = pika.PlainCredentials('vkg_test', 'mima1234')
 
     def send_task(self, **kwargs):
-        parameters = pika.ConnectionParameters('10.26.81.18', 5672, '/', self.credentials)
+        parameters = pika.ConnectionParameters('10.26.81.92', 5672, '/', self.credentials)
         connection = pika.BlockingConnection(parameters)
         channel = connection.channel()
         channel.exchange_declare(exchange='direct_exchange', exchange_type='direct')

@@ -21,7 +21,7 @@ def create_dir(dir):
 
 
 neko = threading.Lock()
-
+LOCAL_IP = '10.26.81.7'
 
 class NDFuzzMonitor:
     def __init__(self, message=None, debug=False):
@@ -29,7 +29,7 @@ class NDFuzzMonitor:
         # print(message["params"])
         self.message = message
         self.protocols = message["params"]["protocol"]
-        self.local_ip = '10.26.81.61'
+        self.local_ip = LOCAL_IP
         self.thread_info = {}
 
         self.logger = logging.getLogger('BaseLineMonitor')
@@ -211,8 +211,8 @@ class NDFuzzMonitor:
         message["msg_type"] = 2
         message["destination"] = copy.deepcopy(message["source"])
         message['source'] = '07b8e7db09904e68a08bd6047246ee06'
-        message["successed"] = successed
-        message["error"] = error
+        message["successed"] = self._success
+        message["error"] = self._error
         message["data_uri"] = "null"
         message["data"] = data
         message["timestamp"] = int(time.time())
@@ -245,7 +245,7 @@ class NDFuzzMonitor:
 
 class NDFuzzController:
     def __init__(self, message=None, run_local=False, config=None, logger=None):
-        self.local_ip = '10.26.81.61'
+        self.local_ip = LOCAL_IP
 
         if not config:
             with open('config.json', 'r') as conf_f:
