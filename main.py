@@ -334,12 +334,12 @@ class NDFuzzController:
             self.error("Can not get running Port")
         self.info("[!] Image running at Port {}".format(port))
 
-        self.debug('[+] Starting Fuzzer Image')
-        if not self.run_in_local:
-            t_image = threading.Thread(target=self.start_image, args=(config["image_start"],))
-            self.start_image_flag = False
-            self.end_image_flag = False
-            t_image.start()
+        # self.debug('[+] Starting Fuzzer Image')
+        # if not self.run_in_local:
+        #     t_image = threading.Thread(target=self.start_image, args=(config["image_start"],))
+        #     self.start_image_flag = False
+        #     self.end_image_flag = False
+        #     t_image.start()
 
         self.debug('[+] Running firmware Image')
         t_firmware = threading.Thread(target=self.start_firmware, args=(config["firmware"], port))
