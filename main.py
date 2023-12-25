@@ -192,7 +192,8 @@ class NDFuzzMonitor:
 
         with open(info["file"], "a") as pre_res:
             for name in new_list:
-                sftp.get("{}/crashes/{}".format(info["path"], name), "result/{}_{}".format(protocol, name))
+                # print("result file name = result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, name)) # haha
+                sftp.get("{}/crashes/{}".format(info["path"], name), "result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, name))
                 pre_res.write(name + "\n")
 
         sftp.get("{}/nfv_coverage".format(info["coverage"]), "result/{}".format(info["cv_file"]))
@@ -231,7 +232,8 @@ class NDFuzzMonitor:
 
         value_list = []
         for case_name in new_list:
-            with open("result/{}_{}".format(protocol, case_name), "r") as case_f:
+            with open("result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, case_name), "r") as case_f:
+                # print("result file name = result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, case_name)) # haha
                 content = case_f.readline()
                 payload_msg_type = ast.literal_eval(content)[0]
                 payload = ast.literal_eval(content)[-1]
