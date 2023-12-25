@@ -1,6 +1,8 @@
 import pika
 import json
 from main import NDFuzzMonitor
+import threading
+
 
 # MESSAGE_FILE_NAME = "/appdata/message"
 
@@ -31,8 +33,11 @@ class Consumer:
 
             # Print the message
             print("Received %r" % self.message)
+            
+            process_thread = threading.Thread(target=self.process_message)
+            process_thread.start()
             # Do something with the message
-            self.process_message()
+            # self.process_message()
 
         # Consume the message from the queue
         channel.basic_consume(queue=queue_name, on_message_callback=callback, auto_ack=True)
@@ -45,7 +50,6 @@ class Consumer:
     def process_message(self):
         if self.message['msg_type'] == 0:
 
-
             self.message["params"] = {
                 "vendor": self.message["data"]["target_file"]["vendor"],
                 # "protocol": ["dhcp", "snmp"],
@@ -55,8 +59,8 @@ class Consumer:
             # print(self.message["params"]["time_limit"], self.message["params"]["time_gap"])
 
             ndfuzz_monitor = NDFuzzMonitor(self.message)
-
-            ndfuzz_monitor.start()
+            ndfuzz_monitor.start() 
+            
             # TOOD: 返回调用是否成功的信息
             
             # pass

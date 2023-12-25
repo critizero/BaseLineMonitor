@@ -299,14 +299,14 @@ class NDFuzzController:
         create_dir("result")
 
     def error(self, error_msg):
-        self.logger.error("\033[91m<{}> | {}\033[0m".format(self.protocol, error_msg))
+        self.logger.error("\033[91m<{} {}> | {}\033[0m".format(self.vendor, self.protocol, error_msg))
         exit(0)
 
     def debug(self, debug_msg):
-        self.logger.debug("\033[93m<{}> | {}\033[0m".format(self.protocol, debug_msg))
+        self.logger.debug("\033[93m<{} {}> | {}\033[0m".format(self.vendor, self.protocol, debug_msg))
 
     def info(self, info_msg):
-        self.logger.info("\033[92m<{}> | {}\033[0m".format(self.protocol, info_msg))
+        self.logger.info("\033[92m<{} {}> | {}\033[0m".format(self.vendor, self.protocol, info_msg))
 
     def start(self):
         if self.vendor not in self.config or self.protocol not in self.config[self.vendor]:
@@ -372,6 +372,7 @@ class NDFuzzController:
         self.end_image_flag = True
 
     def start_image(self, path):
+        print(path)
         run_image = subprocess.Popen(["sudo", format(path)])
         self.start_image_flag = True
         while True:

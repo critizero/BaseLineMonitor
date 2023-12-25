@@ -27,7 +27,7 @@ class Producer:
             "data": {
                 'target_file': {'file_name': 'httpd',
                                 'storage_uri': '2d40f37630b5a46c27254c06dee90580',
-                                'vendor': 'sma'}
+                                'vendor': kwargs.get("vendor")}
             },
             "timestamp": datetime.now().strftime('%Y%m%d%H%M%S%f')[:-3],
             "signature": '暂时空'
@@ -41,4 +41,5 @@ class Producer:
 if __name__ == '__main__':
     a = Producer()
     destination = '07b8e7db09904e68a08bd6047246ee06' # 设置自己的 uuid
-    a.send_task(**dict(vhost=destination))
+    a.send_task(**dict(vhost=destination, vendor="sma"))
+    # a.send_task(**dict(vhost=destination, vendor="asa"))
