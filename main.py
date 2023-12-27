@@ -13,6 +13,7 @@ import ast
 
 import uuid
 from producer import *
+import shutil
 
 
 def create_dir(dir):
@@ -22,6 +23,8 @@ def create_dir(dir):
 
 neko = threading.Lock()
 LOCAL_IP = '10.26.81.7'
+VMEARE_FUZZER_IP = "172.16.239.128"                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      
+DEFAULT_TARGET_IP = "10.0.2.99"
 
 
 class NDFuzzMonitor:
@@ -34,7 +37,7 @@ class NDFuzzMonitor:
         self.local_ip = LOCAL_IP
         self.thread_info = {}
 
-        self.logger = logging.getLogger('BaseLineMonitor')
+        self.logger = logging.getLogger(message["params"]["vendor"])
         formatter = logging.Formatter('%(asctime)s - %(levelname)s: %(message)s')
         console = logging.StreamHandler()
         console.setLevel(logging.DEBUG)
@@ -45,6 +48,7 @@ class NDFuzzMonitor:
         with open('config.json', 'r') as conf_f:
             self.config = json.load(conf_f)
 
+        # 一个 vendor 启一个 monitor
         for protocol in self.config[message["params"]["vendor"]]:
             self.protocols.append(protocol)
 
@@ -55,9 +59,8 @@ class NDFuzzMonitor:
         self._success = True
 
     def start(self):
-        os.system("rm -f result/*")
         for protocol in self.protocols:
-            self.info("======Deliver Task : {}======".format(protocol))
+            self.info("======Deliver Task : {} {}======".format(self.message["params"]["vendor"], protocol))
             tmp_link = {
                 "vendor": self.message["params"]["vendor"],
                 "protocol": protocol,
@@ -79,7 +82,16 @@ class NDFuzzMonitor:
     def info(self, info_msg):
         self.logger.debug("\033[94m<MAIN> | {}\033[0m".format(info_msg))
 
+    def run_qemu_image(self, msg): 
+        runner = NDFuzzController(message=msg, config=self.config, logger=self.logger)
+        runner.start()
+
+    def run_vmware_image(self, msg):
+        runner = BlackBoxFuzzController(message=msg, config=self.config, logger=self.logger)
+        runner.start()
+
     def run(self, msg):
+        # 初始化配置和结果文件
         config = self.config[msg["vendor"]][msg["protocol"]]
         out_path = "{}/out_{}_{}_BY_BLM".format(config["fuzzer"], msg["vendor"], msg["protocol"])
 
@@ -87,34 +99,62 @@ class NDFuzzMonitor:
         with open(res_pre, "a+") as res_pre_f:
             res_pre_f.truncate(0)
 
-        port = None
-        with open(config["image_start"], "r") as start_f:
-            for line in start_f.readlines():
-                if "-:22 -net nic" in line:
-                    port = int(re.findall(r':(\d+)-:22', line)[0])
-                    break
+        # 删除结果文件夹
+        result_dir = "result-{}-{}".format(msg["vendor"], msg["protocol"])        
+        if os.path.exists(result_dir):
+            shutil.rmtree(result_dir)
 
+        port = 22
+        if config["image_type"] == "qemu":
+            with open(config["image_start"], "r") as start_f:
+                for line in start_f.readlines():
+                    if "-:22 -net nic" in line:
+                        port = int(re.findall(r':(\d+)-:22', line)[0])
+                        break
+        
+        target_ip = DEFAULT_TARGET_IP
+        if "target_ip" in config:
+            target_ip = config["target_ip"]
+        
+        fuzzer_ip = LOCAL_IP
+        if config["image_type"] == "vmware":
+            fuzzer_ip = VMEARE_FUZZER_IP
+
+        # 记录结果文件的路径信息
         info = {
             "path": out_path,
-            "port": port,
             "file": res_pre,
             "config": "{}/Configs/{}.config".format(config["fuzzer"], config["config"]),
-            "cv_file": "{}_{}_coverage".format(msg["vendor"], msg["protocol"])
+            "cv_file": "coverage.txt", 
+            "local_result": "result-{}-{}".format(msg["vendor"], msg["protocol"]), 
+            "port": port,
+            "target_ip": target_ip,
+            "fuzzer_ip": fuzzer_ip, 
+            "image_type": config["image_type"]
         }
 
+        # 记录当前 fuzz 流程的结果路径信息（看起来好像没啥用）
         neko.acquire()
         self.thread_info[msg["protocol"]] = info
         neko.release()
+        
+        # 启动 vmware 镜像（新流程）
+        if config["image_type"] == "vmware":
+            self.run_vmware_image(msg)
+        # 启动 qemu 镜像（原流程）
+        elif config["image_type"] == "qemu":
+            self.run_qemu_image(msg)
+        else:
+            # 错误的镜像类型
+            self.info('[+] Unsupported image type!')
 
-        runner = NDFuzzController(message=msg, config=self.config, logger=self.logger)
-        runner.start()
-
-    def get_link(self, port):
+    def get_link(self, fuzzer_ip, port):
+        self.info("[+] Link {}:{} via SSH...".format(fuzzer_ip, port))
         retry_count = 5
         transport = None
         while True:
             try:
-                transport = paramiko.Transport((self.local_ip, port))
+                transport = paramiko.Transport((fuzzer_ip, port))
                 transport.connect(username="nfvfuzzer", password="mima1234")
             except Exception:
                 if not retry_count:
@@ -133,12 +173,6 @@ class NDFuzzMonitor:
             t_scanner.start()
             t_scanner.join()
 
-        keys = {
-            "vendor": "固件",
-            "protocol": "协议",
-            "message_type": "消息类型",
-            "payload": "攻击载荷"
-        }
         # data = {"keys": keys, "data": self._data}
         data = { "items" : self._data }
         producer_message = self.generate_producer_message(data)
@@ -150,12 +184,13 @@ class NDFuzzMonitor:
             producer.send_task_result(producer_message)
 
     def get_result(self, info, protocol):
+        scan_link = self.get_link(info["fuzzer_ip"], info["port"])
 
-        scan_link = self.get_link(info["port"])
         ssh = paramiko.SSHClient()
         ssh._transport = scan_link
 
-        if "coverage" not in info:
+        # 获取 ndfuzz 的覆盖率信息
+        if "coverage" not in info and info["image_type"] == "qemu":
             stdin, stdout, stderr = ssh.exec_command("cat {}".format(info["config"]))
             res = stdout.read().decode().strip()
             time.sleep(1)
@@ -192,17 +227,17 @@ class NDFuzzMonitor:
 
         with open(info["file"], "a") as pre_res:
             for name in new_list:
-                # print("result file name = result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, name)) # haha
-                sftp.get("{}/crashes/{}".format(info["path"], name), "result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, name))
+                sftp.get("{}/crashes/{}".format(info["path"], name), "{}/{}".format(info["local_result"], name))
                 pre_res.write(name + "\n")
 
-        sftp.get("{}/nfv_coverage".format(info["coverage"]), "result/{}".format(info["cv_file"]))
+        if info["image_type"] == "qemu":
+            sftp.get("{}/nfv_coverage".format(info["coverage"]), "{}/{}".format(info["local_result"], info["cv_file"]))
 
         # stdin, stdout, stderr = ssh.exec_command("tail -n 2 {} | head -n 1".format(self.coverage))
         # coverage = stdout.read().decode().strip()
 
         if not self.is_debug and new_list:
-            successed, error, data = self.get_result_data(new_list, protocol)
+            successed, error, data = self.get_result_data(info["local_result"], new_list, protocol)
 
             if not successed:
                 self._error += error + '\n'
@@ -227,13 +262,10 @@ class NDFuzzMonitor:
 
         return message
 
-    # @staticmethod
-    def get_result_data(self, new_list, protocol):
-
+    def get_result_data(self, local_result, new_list, protocol):
         value_list = []
         for case_name in new_list:
-            with open("result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, case_name), "r") as case_f:
-                # print("result file name = result/{}_{}_{}".format(self.message["params"]["vendor"], protocol, case_name)) # haha
+            with open("{}/{}".format(local_result, case_name), "r") as case_f:
                 content = case_f.readline()
                 payload_msg_type = ast.literal_eval(content)[0]
                 payload = ast.literal_eval(content)[-1]
@@ -252,8 +284,7 @@ class NDFuzzMonitor:
         error = "null"
         return successed, error, result
 
-
-class NDFuzzController:
+class BaseFuzzController:
     def __init__(self, message=None, run_local=False, config=None, logger=None):
         self.local_ip = LOCAL_IP
 
@@ -280,25 +311,28 @@ class NDFuzzController:
             self.time_limit = 300
             self.time_gap = 60
 
-        self.pre_result_idx = None
         self.res_pre = None
         self.coverage = None
+        self.local_result = None
 
-        self.start_image_flag = False
-        self.end_image_flag = False
-        self.start_firmware_flag = False
         self.start_fuzzer_flag = False
 
-        self.firmware_link = None
-        self.fuzzer_link = None
-
         self.message = message
-        self._mode = "NDFuzz"
-        if self.vendor == "citrix" and self.protocol == "snmp":
-            self._mode = "Zsnmp"
+
+        self.out_path = "{}/out_{}_{}_BY_BLM".format(config[self.vendor][self.protocol]["fuzzer"], self.vendor, self.protocol)
+        self.info("[!] Output file path : {}".format(self.out_path))
+
+        # 本地结果
+        self.res_pre = "log/{}_{}_pre.txt".format(self.vendor, self.protocol)
+        with open(self.res_pre, "a+") as res_pre:
+            res_pre.truncate(0)
+        
+        self.local_result = "result-{}-{}".format(self.vendor, self.protocol)
+        if os.path.exists(self.local_result):
+            shutil.rmtree(self.local_result)
 
         create_dir("log")
-        create_dir("result")
+        create_dir(self.local_result)
 
     def error(self, error_msg):
         self.logger.error("\033[91m<{} {}> | {}\033[0m".format(self.vendor, self.protocol, error_msg))
@@ -310,20 +344,46 @@ class NDFuzzController:
     def info(self, info_msg):
         self.logger.info("\033[92m<{} {}> | {}\033[0m".format(self.vendor, self.protocol, info_msg))
 
+    def start_link(self, fuzzer_ip, port=22):
+        self.debug("[+] Link {}:{} via SSH...".format(fuzzer_ip, port))
+        retry_count = 10
+        transport = None
+        while True:
+            try:
+                transport = paramiko.Transport((fuzzer_ip, port))
+                transport.connect(username="nfvfuzzer", password="mima1234")
+            except Exception:
+                if not retry_count:
+                    self.debug("[x] Cannot Connect to Image")
+                    return None
+                self.debug("[x] Socket Timeout, retry after 10s...")
+                time.sleep(10)
+                retry_count -= 1
+                continue
+            break
+        return transport
+
+class NDFuzzController(BaseFuzzController):
+    def __init__(self, message=None, run_local=False, config=None, logger=None):
+        super().__init__(message, run_local, config, logger)
+
+        self.start_image_flag = False
+        self.end_image_flag = False
+        self.start_firmware_flag = False
+
+        self.firmware_link = None
+        self.fuzzer_link = None
+
+        self._mode = "NDFuzz"
+        if self.vendor == "citrix" and self.protocol == "snmp":
+            self._mode = "Zsnmp"
+
     def start(self):
         if self.vendor not in self.config or self.protocol not in self.config[self.vendor]:
             self.error("No corresponding image file")
             return
 
         config = self.config[self.vendor][self.protocol]
-        out_path = "{}/out_{}_{}_BY_BLM".format(config["fuzzer"], self.vendor, self.protocol)
-        self.info("[!] Output file path : {}".format(out_path))
-
-        # 本地结果
-        self.res_pre = "log/{}_{}_pre.txt".format(self.vendor, self.protocol)
-        with open(self.res_pre, "a+") as res_pre:
-            res_pre.truncate(0)
-        os.system("rm -f result/*")
 
         self.debug('[+] Getting Running Port')
         port = None
@@ -349,7 +409,7 @@ class NDFuzzController:
 
         self.debug("[+] Running NDFuzz")
         t_fuzz = threading.Thread(target=self.start_fuzzer,
-                                  args=(config["fuzzer"], port, config["config"], config["input"], out_path))
+                                  args=(config["fuzzer"], port, config["config"], config["input"], self.out_path))
         t_fuzz.start()
 
         while True:
@@ -383,25 +443,6 @@ class NDFuzzController:
                 break
         self.debug("[+] Exit Fuzzer Image")
 
-    def start_link(self, port):
-        self.debug("[+] Link via SSH...")
-        retry_count = 10
-        transport = None
-        while True:
-            try:
-                transport = paramiko.Transport((self.local_ip, port))
-                transport.connect(username="nfvfuzzer", password="mima1234")
-            except Exception:
-                if not retry_count:
-                    self.debug("[x] Cannot Connect to Image")
-                    return None
-                self.debug("[x] Socket Timeout, retry after 10s...")
-                time.sleep(10)
-                retry_count -= 1
-                continue
-            break
-        return transport
-
     def start_firmware(self, path, port):
         # 等待镜像启动完成
         if not self.run_in_local:
@@ -411,7 +452,7 @@ class NDFuzzController:
                     time.sleep(20)
                     break
 
-        self.firmware_link = self.start_link(port)
+        self.firmware_link = self.start_link(self.local_ip, port)
 
         self.debug("[+] Communicate via SSH")
         ssh = paramiko.SSHClient()
@@ -434,7 +475,7 @@ class NDFuzzController:
                 time.sleep(5)
                 break
 
-        self.fuzzer_link = self.start_link(port)
+        self.fuzzer_link = self.start_link(self.local_ip, port)
 
         self.debug("[+] Communicate via SSH")
         ssh = paramiko.SSHClient()
@@ -461,6 +502,56 @@ class NDFuzzController:
         elif self._mode == "Zsnmp":
             pass
 
+class BlackBoxFuzzController(BaseFuzzController):
+    def __init__(self, message=None, run_local=False, config=None, logger=None):
+        super().__init__(message, run_local, config, logger)
+        self.fuzzer_ip = VMEARE_FUZZER_IP
+
+    def start(self):
+        if self.vendor not in self.config or self.protocol not in self.config[self.vendor]:
+            self.error("No corresponding image file")
+            return
+
+        config = self.config[self.vendor][self.protocol]
+
+        self.debug("[+] Running Black Box Fuzz")
+        t_fuzz = threading.Thread(target=self.start_fuzzer,
+                                  args=(config["fuzzer"], config["target_ip"], config["input"], self.out_path))
+        t_fuzz.start()
+
+        # 等待 fuzzer 启动
+        while True:
+            if self.start_fuzzer_flag:
+                break
+            time.sleep(1)
+
+        # 执行固定时间
+        exec_time = 0
+        while exec_time < self.time_limit:
+            time.sleep(1)
+            exec_time += 1
+
+        self.debug("[+] Time Limit!")
+
+        self.debug("[+] Exit Fuzzer")
+        if self.fuzzer_link:
+            self.fuzzer_link.close()
+
+
+    def start_fuzzer(self, path, target_ip, seed, out):
+        # 打开 fuzzer 连接
+        self.fuzzer_link = self.start_link(self.fuzzer_ip)
+        self.debug("[+] Communicate via SSH")
+        ssh = paramiko.SSHClient()
+        ssh._transport = self.fuzzer_link
+
+        # 启动 fuzz
+        self.info("[!] Run Fuzzer...")
+        self.start_fuzzer_flag = True
+        stdin, stdout, stderr = ssh.exec_command(
+            "cd {} && sudo python2 zsnmp.py -t {} -c public -i {} -o {} --logAll".format(path, target_ip, seed, out), get_pty=True)
+        time.sleep(1)
+        stdin.write("mima1234\n")
 
 if __name__ == '__main__':
     # m = NDFuzzMonitor(run_local=True)
@@ -468,8 +559,8 @@ if __name__ == '__main__':
 
     msg = {
         "params":{
-            "vendor": "asa",
-            "protocol": ["dhcp", "snmp"],
+            "vendor": "paloalto",
+            "protocol": ["snmp"],
             "time_limit": 300,
             "time_gap": 60
         },

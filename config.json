@@ -5,14 +5,16 @@
       "firmware": "/home/nfvfuzzer/Desktop/nfv/asa",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0805",
       "config": "asa",
-      "input": "in_asa_snmp_1124"
+      "input": "in_asa_snmp_1124",
+      "image_type": "qemu"
     },
     "dhcp": {
       "image_start": "/appdata/NFVFuzzer_env/asa_dhcp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/nfv/asa",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0805",
       "config": "asa_dhcp",
-      "input": "in_asa_seeds"
+      "input": "in_asa_seeds",
+      "image_type": "qemu"
     }
   },
   "asa_bak": {
@@ -21,14 +23,16 @@
       "firmware": "/home/nfvfuzzer/Desktop/nfv/asa",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0805",
       "config": "asa",
-      "input": "in_asa_snmp_1124"
+      "input": "in_asa_snmp_1124",
+      "image_type": "qemu"
     },
     "dhcp": {
       "image_start": "/appdata/NFVFuzzer_env/asa_dhcp_fb/start_ubuntu.sh",
       "firmware": "/home/nfvfuzzer/Desktop/nfv/asa",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0805",
       "config": "asa_dhcp",
-      "input": "in_asa_seeds"
+      "input": "in_asa_seeds",
+      "image_type": "qemu"
     }
   },
   "srx": {
@@ -37,7 +41,8 @@
       "firmware": "/home/nfvfuzzer/Desktop/srx_nfv_ntp",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "vsrx",
-      "input": "in_juniper"
+      "input": "in_juniper",
+      "image_type": "qemu"
     }
   },
   "vmx": {
@@ -46,7 +51,8 @@
       "firmware": "/home/nfvfuzzer/Desktop/nfv",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "vmx_snmpv2",
-      "input": "in_juniper_vmx"
+      "input": "in_juniper_vmx",
+      "image_type": "qemu"
     }
   },
   "arista": {
@@ -55,7 +61,8 @@
       "firmware": "/home/nfvfuzzer/Desktop/arista_nfv",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0722",
       "config": "vsrx",
-      "input": "in_juniper"
+      "input": "in_juniper",
+      "image_type": "qemu"
     }
   },
   "fortinet": {
@@ -64,7 +71,8 @@
       "firmware": "/home/nfvfuzzer/Desktop/fortinet-FGT-v6.0.8-build0303",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0814",
       "config": "fortinet_608_snmp",
-      "input": "in_fortinet_snmp_1209_01"
+      "input": "in_fortinet_snmp_1209_01",
+      "image_type": "qemu"
     }
   },
   "sma": {
@@ -73,7 +81,8 @@
       "firmware": "/home/nfvfuzzer/Desktop/sonicwall_zsnmp",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0804",
       "config": "sonicwall_sma",
-      "input": "in_sonicwall_sma"
+      "input": "in_sonicwall_sma",
+      "image_type": "qemu"
     }
   },
   "sra": {
@@ -82,7 +91,8 @@
       "firmware": "/home/nfvfuzzer/Desktop/env/sonicwall_zsnmp",
       "fuzzer": "/home/nfvfuzzer/Desktop/NFVFuzzer_0628",
       "config": "sonicwall_sra",
-      "input": "in_sonicwall_sra"
+      "input": "in_sonicwall_sra",
+      "image_type": "qemu"
     }
   },
   "citrix": {
@@ -91,7 +101,30 @@
       "firmware": "/home/nfvfuzzer/Desktop/nfv",
       "fuzzer": "/home/nfvfuzzer/Zfuzz_snmp-master",
       "config": "",
-      "input": "in_citrix_0327"
+      "input": "in_citrix_0327",
+      "image_type": "qemu"
+    }
+  }, 
+  "paloalto": {
+    "snmp": {
+      "image_start": "",
+      "firmware": "",
+      "fuzzer": "/home/nfvfuzzer/Desktop/Zfuzz_snmp-master",
+      "config": "",
+      "input": "paloalto_c7200_input",
+      "target_ip": "172.16.239.129",
+      "image_type": "vmware"
+    }
+  },
+  "pcs": {
+    "snmp": {
+      "image_start": "",
+      "firmware": "",
+      "fuzzer": "/home/nfvfuzzer/Desktop/Zfuzz_snmp-master",
+      "config": "",
+      "input": "pcs_PULSESECURE-PSG-MIB-oids_input",
+      "target_ip": "172.16.239.130",
+      "image_type": "vmware" 
     }
   }
 }
